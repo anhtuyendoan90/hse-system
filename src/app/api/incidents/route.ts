@@ -9,7 +9,7 @@ export async function GET(request: NextRequest) {
     const user = await getCurrentUser();
     if (!user) return unauthorizedResponse();
 
-    const data = db.select().from(incidents).all();
+    const data = await db.select().from(incidents).all();
     return successResponse(data);
   } catch (error) {
     return errorResponse('Lỗi hệ thống', 500);

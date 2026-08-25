@@ -46,7 +46,7 @@ export async function GET(request: NextRequest) {
     const where = and(...conditions);
     
     // Get total count
-    const totalResult = db.select({ count: count() }).from(employees).where(where).get();
+    const totalResult = await db.select({ count: count() }).from(employees).where(where).get();
     const total = totalResult?.count || 0;
 
     // Sort mapping
@@ -61,7 +61,7 @@ export async function GET(request: NextRequest) {
     const orderFn = sortOrder === 'asc' ? asc : desc;
 
     // Fetch employees with department name
-    const results = db.select({
+    const results = await db.select({
       id: employees.id,
       employeeCode: employees.employeeCode,
       fullName: employees.fullName,
@@ -113,13 +113,13 @@ export async function POST(request: NextRequest) {
     }
 
     // Check duplicate employee code
-    const existing = db.select().from(employees).where(eq(employees.employeeCode, body.employeeCode)).get();
+    const existing = await db.select().from(employees).where(eq(employees.employeeCode, body.employeeCode)).get();
     if (existing) {
       return errorResponse(`Mã nhân viên ${body.employeeCode} đã tồn tại`);
     }
 
     const now = new Date().toISOString();
-    const result = db.insert(employees).values({
+    const result = await db.insert(employees).values({
       employeeCode: body.employeeCode,
       fullName: body.fullName,
       dateOfBirth: body.dateOfBirth || null,

@@ -8,8 +8,8 @@ export async function GET(request: NextRequest) {
   try {
     const user = await getCurrentUser();
     if (!user) return unauthorizedResponse();
-    const wastes = db.select().from(wasteRecords).all();
-    const metrics = db.select().from(environmentalMetrics).all();
+    const wastes = await db.select().from(wasteRecords).all();
+    const metrics = await db.select().from(environmentalMetrics).all();
     return successResponse({ wastes, metrics });
   } catch (error) {
     return errorResponse('Lỗi hệ thống', 500);

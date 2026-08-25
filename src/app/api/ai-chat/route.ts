@@ -17,8 +17,8 @@ export async function POST(request: NextRequest) {
     await new Promise(resolve => setTimeout(resolve, 1500));
 
     // Get some stats to make the fake AI smart
-    const totalIncidentsRes = db.select({ count: sql<number>`count(*)` }).from(incidents).get();
-    const totalCampsRes = db.select({ count: sql<number>`count(*)` }).from(monitoringCampaigns).get();
+    const totalIncidentsRes = await db.select({ count: sql<number>`count(*)` }).from(incidents).get();
+    const totalCampsRes = await db.select({ count: sql<number>`count(*)` }).from(monitoringCampaigns).get();
     const incidentCount = totalIncidentsRes?.count || 0;
     const campCount = totalCampsRes?.count || 0;
 

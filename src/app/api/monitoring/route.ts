@@ -11,10 +11,10 @@ export async function GET(request: NextRequest) {
     if (!user) return unauthorizedResponse();
     
     // Get all campaigns
-    const campaigns = db.select().from(monitoringCampaigns).all();
+    const campaigns = await db.select().from(monitoringCampaigns).all();
     
     // Get all results
-    const results = db.select({
+    const results = await db.select({
       id: monitoringResults.id,
       campaignId: monitoringResults.campaignId,
       location: monitoringResults.location,

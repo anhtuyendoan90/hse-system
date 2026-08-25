@@ -10,7 +10,7 @@ export async function GET(request: NextRequest) {
     const user = await getCurrentUser();
     if (!user) return unauthorizedResponse();
 
-    const items = db.select().from(ppeItems).where(eq(ppeItems.isActive, true)).all();
+    const items = await db.select().from(ppeItems).where(eq(ppeItems.isActive, true)).all();
     return successResponse(items);
   } catch (error) {
     return errorResponse('Lỗi hệ thống', 500);

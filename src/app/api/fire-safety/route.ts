@@ -8,7 +8,7 @@ export async function GET(request: NextRequest) {
   try {
     const user = await getCurrentUser();
     if (!user) return unauthorizedResponse();
-    const data = db.select().from(fireEquipments).all();
+    const data = await db.select().from(fireEquipments).all();
     return successResponse(data);
   } catch (error) {
     return errorResponse('Lỗi hệ thống', 500);

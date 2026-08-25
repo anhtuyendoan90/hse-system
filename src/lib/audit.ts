@@ -14,8 +14,8 @@ export interface AuditLogEntry {
   userAgent?: string;
 }
 
-export function createAuditLog(entry: AuditLogEntry) {
-  db.insert(auditLogs).values({
+export async function createAuditLog(entry: AuditLogEntry) {
+  await db.insert(auditLogs).values({
     userId: entry.userId,
     username: entry.username,
     action: entry.action,

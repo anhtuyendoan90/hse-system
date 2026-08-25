@@ -9,7 +9,7 @@ export async function GET(request: NextRequest) {
   try {
     const user = await getCurrentUser();
     if (!user) return unauthorizedResponse();
-    const data = db.select({
+    const data = await db.select({
       id: permitsToWork.id,
       code: permitsToWork.code,
       permitType: permitsToWork.permitType,

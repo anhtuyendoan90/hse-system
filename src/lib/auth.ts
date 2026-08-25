@@ -23,7 +23,7 @@ export interface AuthUser {
 
 // Verify credentials and return user or null
 export async function verifyCredentials(username: string, password: string) {
-  const user = db.select().from(users).where(eq(users.username, username)).get();
+  const user = await db.select().from(users).where(eq(users.username, username)).get();
   if (!user || !user.isActive) return null;
   
   const valid = bcrypt.compareSync(password, user.passwordHash);
@@ -37,7 +37,7 @@ export async function createSession(userId: number, ip?: string, ua?: string): P
   const token = uuidv4();
   const expiresAt = new Date(Date.now() + SESSION_DURATION).toISOString();
   
-  db.insert(sessions).values({
+  await db.insert(sessions).values({
     userId,
     token,
     expiresAt,
@@ -46,7 +46,7 @@ export async function createSession(userId: number, ip?: string, ua?: string): P
   }).run();
   
   // Update last login
-  db.update(users).set({ lastLogin: new Date().toISOString() }).where(eq(users.id, userId)).run();
+  await db.update(users).set({ lastLogin: new Date().toISOString() }).where(eq(users.id, userId)).run();
   
   return token;
 }
@@ -58,7 +58,7 @@ export async function getCurrentUser(): Promise<AuthUser | null> {
     const sessionToken = cookieStore.get(SESSION_COOKIE)?.value;
     if (!sessionToken) return null;
     
-    const session = db.select().from(sessions)
+    const session = await db.select().from(sessions)
       .where(and(
         eq(sessions.token, sessionToken),
         gt(sessions.expiresAt, new Date().toISOString())
@@ -66,15 +66,15 @@ export async function getCurrentUser(): Promise<AuthUser | null> {
     
     if (!session) return null;
     
-    const user = db.select().from(users).where(eq(users.id, session.userId)).get();
+    const user = await db.select().from(users).where(eq(users.id, session.userId)).get();
     if (!user || !user.isActive) return null;
     
-    const role = user.roleId ? db.select().from(roles).where(eq(roles.id, user.roleId)).get() : null;
+    const role = user.roleId ? await db.select().from(roles).where(eq(roles.id, user.roleId)).get() : null;
     
     // Get permissions for user's role
     const userPermissions: { module: string; action: string }[] = [];
     if (user.roleId) {
-      const rps = db.select({
+      const rps = await db.select({
         module: permissions.module,
         action: permissions.action,
       }).from(rolePermissions)
@@ -103,7 +103,7 @@ export async function getCurrentUser(): Promise<AuthUser | null> {
 
 // Delete session
 export async function deleteSession(token: string) {
-  db.delete(sessions).where(eq(sessions.token, token)).run();
+  await db.delete(sessions).where(eq(sessions.token, token)).run();
 }
 
 // Check if user has permission

@@ -700,15 +700,15 @@ export async function initializeDatabase() {
 
   // Bước 1: Tạo bảng
   console.log('📋 Tạo bảng dữ liệu...');
-  sqlite.exec(createTablesSQL);
+  await sqlite.executeMultiple(createTablesSQL);
   console.log('  ✅ Đã tạo tất cả các bảng');
 
   // Bước 2: Seed vai trò
   console.log('👤 Khởi tạo vai trò...');
   for (const role of defaultRoles) {
-    const existing = db.select().from(roles).where(eq(roles.code, role.code)).get();
+    const existing = await db.select().from(roles).where(eq(roles.code, role.code)).get();
     if (!existing) {
-      db.insert(roles).values(role).run();
+      await db.insert(roles).values(role).run();
       console.log(`  ✅ Tạo vai trò: ${role.name}`);
     }
   }
@@ -717,13 +717,13 @@ export async function initializeDatabase() {
   console.log('🔑 Khởi tạo quyền hạn...');
   for (const module of modules) {
     for (const action of actions) {
-      const existing = db.select().from(permissions)
+      const perms = await db.select().from(permissions)
         .where(eq(permissions.module, module))
-        .all()
-        .find(p => p.action === action);
+        .all();
+      const existing = perms.find((p: any) => p.action === action);
       
       if (!existing) {
-        db.insert(permissions).values({
+        await db.insert(permissions).values({
           module,
           action,
           description: `${action} ${module}`,
@@ -735,8 +735,8 @@ export async function initializeDatabase() {
 
   // Bước 4: Gán quyền cho vai trò
   console.log('🔗 Phân quyền cho các vai trò...');
-  const allRoles = db.select().from(roles).all();
-  const allPerms = db.select().from(permissions).all();
+  const allRoles = await db.select().from(roles).all();
+  const allPerms = await db.select().from(permissions).all();
   
   for (const [roleCode, modulePerms] of Object.entries(permissionMatrix)) {
     const role = allRoles.find(r => r.code === roleCode);
@@ -747,13 +747,13 @@ export async function initializeDatabase() {
         const perm = allPerms.find(p => p.module === module && p.action === action);
         if (!perm) continue;
 
-        const existing = db.select().from(rolePermissions)
+        const rolePerms = await db.select().from(rolePermissions)
           .where(eq(rolePermissions.roleId, role.id))
-          .all()
-          .find(rp => rp.permissionId === perm.id);
+          .all();
+        const existing = rolePerms.find((rp: any) => rp.permissionId === perm.id);
 
         if (!existing) {
-          db.insert(rolePermissions).values({
+          await db.insert(rolePermissions).values({
             roleId: role.id,
             permissionId: perm.id,
           }).run();
@@ -765,11 +765,11 @@ export async function initializeDatabase() {
 
   // Bước 5: Tạo tài khoản admin mặc định
   console.log('👨‍💼 Tạo tài khoản admin...');
-  const adminExists = db.select().from(users).where(eq(users.username, 'admin')).get();
+  const adminExists = await db.select().from(users).where(eq(users.username, 'admin')).get();
   if (!adminExists) {
     const adminRole = allRoles.find(r => r.code === 'super_admin');
     const hashedPassword = bcrypt.hashSync('Admin@123456', 12);
-    db.insert(users).values({
+    await db.insert(users).values({
       username: 'admin',
       email: 'admin@hse-system.local',
       passwordHash: hashedPassword,
@@ -786,9 +786,9 @@ export async function initializeDatabase() {
   // Bước 6: Seed phòng ban
   console.log('🏢 Khởi tạo phòng ban...');
   for (const dept of defaultDepartments) {
-    const existing = db.select().from(departments).where(eq(departments.code, dept.code)).get();
+    const existing = await db.select().from(departments).where(eq(departments.code, dept.code)).get();
     if (!existing) {
-      db.insert(departments).values(dept).run();
+      await db.insert(departments).values(dept).run();
       console.log(`  ✅ Tạo phòng ban: ${dept.name}`);
     }
   }
@@ -796,19 +796,19 @@ export async function initializeDatabase() {
   // Bước 7: Seed cài đặt hệ thống
   console.log('⚙️ Khởi tạo cài đặt hệ thống...');
   for (const setting of defaultSettings) {
-    const existing = db.select().from(systemSettings).where(eq(systemSettings.key, setting.key)).get();
+    const existing = await db.select().from(systemSettings).where(eq(systemSettings.key, setting.key)).get();
     if (!existing) {
-      db.insert(systemSettings).values(setting).run();
+      await db.insert(systemSettings).values(setting).run();
     }
   }
   console.log('  ✅ Đã tạo cài đặt mặc định');
 
   // Bước 8: Seed cấu hình cảnh báo
   console.log('🔔 Khởi tạo cấu hình cảnh báo...');
-  const existingAlerts = db.select().from(alertConfigs).all();
+  const existingAlerts = await db.select().from(alertConfigs).all();
   if (existingAlerts.length === 0) {
     for (const config of defaultAlertConfigs) {
-      db.insert(alertConfigs).values({
+      await db.insert(alertConfigs).values({
         ...config,
         isActive: true,
         notifyRoles: JSON.stringify(['super_admin', 'hse_manager', 'hse_officer']),
@@ -832,7 +832,7 @@ export async function initializeDatabase() {
       { code: 'TR-FIRE', name: 'Phòng cháy chữa cháy', trainingGroup: 'Khác', durationHours: 8 },
     ];
     for (const course of courses) {
-      db.insert(trainingCourses).values(course).onConflictDoNothing().run();
+      await db.insert(trainingCourses).values(course).onConflictDoNothing().run();
       console.log(`  ✅ Tạo khóa học: ${course.name}`);
     }
 
@@ -848,7 +848,7 @@ export async function initializeDatabase() {
       { code: 'PPE-007', name: 'Khẩu trang lọc bụi N95', category: 'Hô hấp', unit: 'Hộp', stockQuantity: 50 },
     ];
     for (const ppe of ppes) {
-      db.insert(ppeItems).values(ppe).onConflictDoNothing().run();
+      await db.insert(ppeItems).values(ppe).onConflictDoNothing().run();
       console.log(`  ✅ Tạo PPE: ${ppe.name}`);
     }
 
@@ -861,7 +861,7 @@ export async function initializeDatabase() {
       { code: 'EQ-004', name: 'Máy nén khí trung tâm', category: 'Thiết bị áp lực', location: 'Trạm khí nén', status: 'active' },
     ];
     for (const eq of eqs) {
-      db.insert(equipments).values(eq).onConflictDoNothing().run();
+      await db.insert(equipments).values(eq).onConflictDoNothing().run();
       console.log(`  ✅ Tạo thiết bị: ${eq.name}`);
     }
 
@@ -872,7 +872,7 @@ export async function initializeDatabase() {
       { code: 'IN-2023-002', title: 'Sự cố chập điện', description: 'Chập điện tại tủ điện chính', incidentDate: new Date().toISOString(), severity: 'major', status: 'open' },
     ];
     for (const inc of incs) {
-      db.insert(incidents).values(inc).onConflictDoNothing().run();
+      await db.insert(incidents).values(inc).onConflictDoNothing().run();
       console.log(`  ✅ Tạo sự cố: ${inc.code}`);
     }
 
@@ -880,7 +880,7 @@ export async function initializeDatabase() {
       { code: 'CHK-2023-001', title: 'Kiểm tra PCCC định kỳ', inspectionDate: new Date().toISOString(), location: 'Toàn nhà máy', status: 'planned' },
     ];
     for (const insp of insps) {
-      db.insert(inspections).values(insp).onConflictDoNothing().run();
+      await db.insert(inspections).values(insp).onConflictDoNothing().run();
       console.log(`  ✅ Tạo lượt kiểm tra: ${insp.code}`);
     }
 
@@ -888,7 +888,7 @@ export async function initializeDatabase() {
       { code: 'CAPA-2023-001', title: 'Sửa chữa rò rỉ dầu', description: 'Thay gioăng phớt máy ép', actionType: 'corrective', actionPlan: 'Mua gioăng mới và thay thế', deadline: new Date().toISOString(), status: 'open' },
     ];
     for (const cp of cps) {
-      db.insert(capas).values(cp).onConflictDoNothing().run();
+      await db.insert(capas).values(cp).onConflictDoNothing().run();
       console.log(`  ✅ Tạo CAPA: ${cp.code}`);
     }
 
@@ -899,7 +899,7 @@ export async function initializeDatabase() {
       { code: 'FE-002', name: 'Bình CO2 3kg', type: 'extinguisher', location: 'Phòng Server', status: 'active' },
     ];
     for (const fe of fires) {
-      db.insert(fireEquipments).values(fe).onConflictDoNothing().run();
+      await db.insert(fireEquipments).values(fe).onConflictDoNothing().run();
       console.log(`  ✅ Tạo thiết bị PCCC: ${fe.code}`);
     }
 
@@ -907,7 +907,7 @@ export async function initializeDatabase() {
       { wasteType: 'hazardous', quantity: 150.5, unit: 'kg', generationDate: new Date().toISOString(), status: 'stored' },
     ];
     for (const w of wastes) {
-      db.insert(wasteRecords).values(w).run();
+      await db.insert(wasteRecords).values(w).run();
       console.log(`  ✅ Tạo bản ghi rác thải`);
     }
 
@@ -915,7 +915,7 @@ export async function initializeDatabase() {
       { metricName: 'noise', value: 82.5, unit: 'dBA', measureDate: new Date().toISOString(), legalLimit: 85, status: 'pass' },
     ];
     for (const env of envs) {
-      db.insert(environmentalMetrics).values(env).run();
+      await db.insert(environmentalMetrics).values(env).run();
       console.log(`  ✅ Tạo chỉ số môi trường`);
     }
 
@@ -923,7 +923,7 @@ export async function initializeDatabase() {
       { code: 'RA-2023-001', activity: 'Hàn cắt kim loại', hazard: 'Cháy nổ, bỏng', severity: 4, likelihood: 3, riskScore: 12, riskLevel: 'high', controlMeasures: 'Sử dụng màn chắn tia lửa, dọn dẹp vật liệu dễ cháy', assessmentDate: new Date().toISOString(), status: 'active' },
     ];
     for (const ra of ras) {
-      db.insert(riskAssessments).values(ra).onConflictDoNothing().run();
+      await db.insert(riskAssessments).values(ra).onConflictDoNothing().run();
       console.log(`  ✅ Tạo đánh giá rủi ro: ${ra.code}`);
     }
 
@@ -932,7 +932,7 @@ export async function initializeDatabase() {
       { code: 'PTW-2023-001', permitType: 'hot_work', description: 'Hàn ống nước tản nhiệt', location: 'Mái xưởng 1', applicantId: 1, startTime: new Date().toISOString(), endTime: new Date(Date.now() + 86400000).toISOString(), status: 'pending' },
     ];
     for (const ptw of ptws) {
-      db.insert(permitsToWork).values(ptw).onConflictDoNothing().run();
+      await db.insert(permitsToWork).values(ptw).onConflictDoNothing().run();
       console.log(`  ✅ Tạo Permit to Work: ${ptw.code}`);
     }
 
@@ -940,7 +940,7 @@ export async function initializeDatabase() {
     console.log('🔬 Khởi tạo dữ liệu Quan trắc môi trường lao động...');
     
     // Tạo 1 đợt quan trắc
-    const campResult = db.insert(monitoringCampaigns).values({
+    const campResult = await db.insert(monitoringCampaigns).values({
       code: 'QT-2023-01',
       name: 'Quan trắc MTLĐ định kỳ 2023',
       year: 2023,
@@ -981,17 +981,17 @@ export async function initializeDatabase() {
     ];
     
     for (const res of monResults) {
-      db.insert(monitoringResults).values(res).run();
+      await db.insert(monitoringResults).values(res).run();
     }
     console.log(`  ✅ Đã tạo ${monResults.length} kết quả đo đạc`);
 
     // 14. Seed Phase 6 Data
     console.log('🚀 Khởi tạo dữ liệu Giai đoạn 6...');
     
-    const admin = db.select().from(users).where(eq(users.username, 'admin')).get() || { id: 1 };
+    const admin = await db.select().from(users).where(eq(users.username, 'admin')).get() || { id: 1 };
     
     // Tạo nhân viên mẫu để thoả mãn Foreign Key constraint
-    const empResult = db.insert(employees).values({
+    const empResult = await db.insert(employees).values({
       employeeCode: 'NV-2023-001',
       fullName: 'Nguyễn Văn A',
       departmentId: 2, // Phòng HSE
@@ -999,9 +999,9 @@ export async function initializeDatabase() {
       employmentStatus: 'working',
     }).returning({ id: employees.id }).get();
     
-    db.insert(certificates).values({ employeeId: empResult.id, name: 'Huấn luyện An toàn Nhóm 1', type: 'ATVSLĐ', issueDate: '2023-01-10', expiryDate: '2025-01-10', issuer: 'Cục An Toàn' }).run();
+    await db.insert(certificates).values({ employeeId: empResult.id, name: 'Huấn luyện An toàn Nhóm 1', type: 'ATVSLĐ', issueDate: '2023-01-10', expiryDate: '2025-01-10', issuer: 'Cục An Toàn' }).run();
     
-    db.insert(vehicles).values({ 
+    await db.insert(vehicles).values({ 
       plateNumber: '29H-12345', 
       vehicleType: 'Xe tải 5 tấn', 
       brand: 'Hino', 
@@ -1018,14 +1018,14 @@ export async function initializeDatabase() {
       status: 'active' 
     }).run();
     
-    db.insert(occupationalDiseases).values({ employeeId: empResult.id, diseaseName: 'Điếc nghề nghiệp', diagnosisDate: '2022-05-15', treatmentFacility: 'BV Bạch Mai', status: 'active', notes: 'Trang bị nút bịt tai' }).run();
+    await db.insert(occupationalDiseases).values({ employeeId: empResult.id, diseaseName: 'Điếc nghề nghiệp', diagnosisDate: '2022-05-15', treatmentFacility: 'BV Bạch Mai', status: 'active', notes: 'Trang bị nút bịt tai' }).run();
     
-    db.insert(legalDocuments).values([
+    await db.insert(legalDocuments).values([
       { documentNumber: '44/2016/NĐ-CP', title: 'Quy định chi tiết một số điều của Luật ATVSLĐ', documentType: 'Nghị định', issueDate: '2016-05-15', effectiveDate: '2016-07-01', issuingAgency: 'Chính phủ', status: 'active' },
       { documentNumber: '84/2015/NĐ-CP', title: 'Luật An toàn, vệ sinh lao động', documentType: 'Luật', issueDate: '2015-06-25', effectiveDate: '2016-07-01', issuingAgency: 'Quốc hội', status: 'active' }
     ]).run();
 
-    db.insert(hseDocuments).values([
+    await db.insert(hseDocuments).values([
       { title: 'Quy trình Ứng phó Khẩn cấp', category: 'Quy trình', version: 'v1.0', author: 'Phòng HSE' },
       { title: 'Hướng dẫn LOTO', category: 'Hướng dẫn', version: 'v2.1', author: 'Phòng Kỹ thuật' }
     ]).run();

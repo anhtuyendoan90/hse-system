@@ -10,7 +10,7 @@ export async function GET(request: NextRequest) {
     const user = await getCurrentUser();
     if (!user) return unauthorizedResponse();
 
-    const records = db.select({
+    const records = await db.select({
       id: healthRecords.id,
       employeeName: employees.fullName,
       checkDate: healthRecords.checkDate,

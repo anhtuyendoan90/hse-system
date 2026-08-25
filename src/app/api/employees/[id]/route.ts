@@ -17,7 +17,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
     const { id } = await context.params;
     const empId = parseInt(id);
     
-    const employee = db.select({
+    const employee = await db.select({
       id: employees.id,
       employeeCode: employees.employeeCode,
       fullName: employees.fullName,
@@ -69,17 +69,17 @@ export async function PUT(request: NextRequest, context: RouteContext) {
     const body = await request.json();
 
     // Check exists
-    const existing = db.select().from(employees).where(eq(employees.id, empId)).get();
+    const existing = await db.select().from(employees).where(eq(employees.id, empId)).get();
     if (!existing) return notFoundResponse('Không tìm thấy nhân viên');
 
     // Check duplicate code if changed
     if (body.employeeCode && body.employeeCode !== existing.employeeCode) {
-      const duplicate = db.select().from(employees).where(eq(employees.employeeCode, body.employeeCode)).get();
+      const duplicate = await db.select().from(employees).where(eq(employees.employeeCode, body.employeeCode)).get();
       if (duplicate) return errorResponse(`Mã nhân viên ${body.employeeCode} đã tồn tại`);
     }
 
     const now = new Date().toISOString();
-    db.update(employees).set({
+    await db.update(employees).set({
       employeeCode: body.employeeCode ?? existing.employeeCode,
       fullName: body.fullName ?? existing.fullName,
       dateOfBirth: body.dateOfBirth ?? existing.dateOfBirth,
@@ -131,11 +131,11 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
     const { id } = await context.params;
     const empId = parseInt(id);
 
-    const existing = db.select().from(employees).where(eq(employees.id, empId)).get();
+    const existing = await db.select().from(employees).where(eq(employees.id, empId)).get();
     if (!existing) return notFoundResponse('Không tìm thấy nhân viên');
 
     // Soft delete
-    db.update(employees).set({
+    await db.update(employees).set({
       isDeleted: true,
       updatedAt: new Date().toISOString(),
       updatedBy: user.id,
